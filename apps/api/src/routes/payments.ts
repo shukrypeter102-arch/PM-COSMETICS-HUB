@@ -8,16 +8,18 @@ const prisma = new PrismaClient();
 // Create Payment (Stripe or PayPal)
 router.post('/', authenticate, async (req: any, res) => {
   try {
-    const { orderId, method, amount } = req.body;
+    const { orderId, method } = req.body;
 
     // Verify order exists
     const order = await prisma.order.findUnique({
       where: { id: orderId },
     });
 
-    if (!order) {
+    if (!order || order.userId !== req.userId) {
       return res.status(404).json({ error: 'Order not found' });
     }
+    // Charge the order total from the database, not an amount sent by the client.
+    const amount = order.total;
 
     // Create payment record
     const payment = await prisma.payment.create({
@@ -47,8 +49,18 @@ router.post('/verify/:paymentId', authenticate, async (req: any, res) => {
   try {
     const { transactionId } = req.body;
 
-    const payment = await prisma.payment.update({
+    // NOTE: this must be replaced by server-side verification with Stripe/PayPal
+    // before going live. Until then, only the order owner may mark it.
+    const existing = await prisma.payment.findUnique({
       where: { id: req.params.paymentId },
+      include: { order: true },
+    });
+    if (!existing || existing.order.userId !== req.userId) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    const payment = await prisma.payment.update({
+      where: { id: existing.id },
       data: {
         status: 'COMPLETED',
         transactionId,

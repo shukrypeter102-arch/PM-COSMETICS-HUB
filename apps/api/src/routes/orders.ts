@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authenticate } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -10,8 +10,13 @@ router.post('/', authenticate, async (req: any, res) => {
   try {
     const { items, shippingAddressId, billingAddressId, notes, orderType = 'RETAIL' } = req.body;
 
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Order must contain at least one item' });
+    }
+
     // Calculate totals
     let subtotal = 0;
+    let storeId: string | null = null;
     const orderItems: any[] = [];
 
     for (const item of items) {
@@ -23,13 +28,19 @@ router.post('/', authenticate, async (req: any, res) => {
         return res.status(404).json({ error: `Product ${item.productId} not found` });
       }
 
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        return res.status(400).json({ error: `Invalid quantity for product ${item.productId}` });
+      }
+      storeId = storeId ?? product.storeId;
+
       const price = orderType === 'WHOLESALE' ? product.wholesalePrice || product.price : product.price;
-      const itemTotal = price * item.quantity;
+      const itemTotal = price * quantity;
       subtotal += itemTotal;
 
       orderItems.push({
         productId: item.productId,
-        quantity: item.quantity,
+        quantity,
         price,
         total: itemTotal,
       });
@@ -43,7 +54,7 @@ router.post('/', authenticate, async (req: any, res) => {
       data: {
         orderNumber: `ORD-${Date.now()}`,
         userId: req.userId,
-        storeId: items[0]?.storeId || '',
+        storeId,
         subtotal,
         tax,
         shippingCost,
@@ -53,6 +64,8 @@ router.post('/', authenticate, async (req: any, res) => {
           create: orderItems,
         },
         notes,
+        shippingAddressId,
+        billingAddressId,
       },
       include: { items: true },
     });
@@ -105,7 +118,7 @@ router.get('/:orderId', authenticate, async (req: any, res) => {
 });
 
 // Update Order Status (Admin/Seller Only)
-router.patch('/:orderId/status', authenticate, async (req: any, res) => {
+router.patch('/:orderId/status', authenticate, authorize(['ADMIN', 'SELLER']), async (req: any, res) => {
   try {
     const { status } = req.body;
 

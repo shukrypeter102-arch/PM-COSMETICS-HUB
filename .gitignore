@@ -7,10 +7,12 @@ node_modules/
 /coverage
 
 # Production
-/build
-/dist
-/.next
-/out
+build/
+dist/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
 
 # Misc
 .DS_Store
@@ -26,7 +28,6 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
-.env.example
 
 # IDE
 .vscode/

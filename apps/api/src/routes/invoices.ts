@@ -28,7 +28,7 @@ router.get('/:invoiceId', authenticate, async (req: any, res) => {
       include: { order: { include: { items: { include: { product: true } } } } },
     });
 
-    if (!invoice) {
+    if (!invoice || invoice.userId !== req.userId) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
