@@ -4,8 +4,7 @@
   "description": "PM.Cosmetics - E-commerce Platform for cosmetics sales (Retail & Wholesale)",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev": "turbo run dev",
@@ -13,13 +12,16 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "db:migrate": "cd packages/database && npm run migrate",
-    "db:push": "cd packages/database && npm run push",
-    "db:studio": "cd packages/database && npm run studio"
+    "db:migrate": "npm run migrate -w @pmcosmetics/api",
+    "db:push": "npm run push -w @pmcosmetics/api",
+    "db:studio": "npm run studio -w @pmcosmetics/api"
   },
   "devDependencies": {
     "turbo": "^1.10.0",
     "prettier": "^3.0.0",
     "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

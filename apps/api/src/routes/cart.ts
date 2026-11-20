@@ -16,7 +16,7 @@ router.get('/', authenticate, async (req: any, res) => {
     if (!cart) {
       cart = await prisma.cart.create({
         data: { userId: req.userId, sessionId: '' },
-        include: { items: true },
+        include: { items: { include: { product: true } } },
       });
     }
 
@@ -29,7 +29,18 @@ router.get('/', authenticate, async (req: any, res) => {
 // Add to Cart
 router.post('/items', authenticate, async (req: any, res) => {
   try {
-    const { productId, quantity, price, variantId } = req.body;
+    const { productId, variantId } = req.body;
+    const quantity = Number(req.body.quantity) || 1;
+    if (!productId || quantity < 1) {
+      return res.status(400).json({ error: 'productId and a positive quantity are required' });
+    }
+
+    // Never trust a price sent by the client; read it from the database.
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    const price = product.price;
 
     let cart = await prisma.cart.findUnique({
       where: { userId: req.userId },
@@ -55,7 +66,7 @@ router.post('/items', authenticate, async (req: any, res) => {
         productId,
         quantity,
         price,
-        variantId,
+        variantId: variantId || '',
       },
     });
 
@@ -68,8 +79,16 @@ router.post('/items', authenticate, async (req: any, res) => {
 // Remove from Cart
 router.delete('/items/:itemId', authenticate, async (req: any, res) => {
   try {
-    await prisma.cartItem.delete({
+    const item = await prisma.cartItem.findUnique({
       where: { id: req.params.itemId },
+      include: { cart: true },
+    });
+    if (!item || item.cart.userId !== req.userId) {
+      return res.status(404).json({ error: 'Cart item not found' });
+    }
+
+    await prisma.cartItem.delete({
+      where: { id: item.id },
     });
 
     res.json({ success: true });

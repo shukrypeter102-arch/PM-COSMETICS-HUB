@@ -3,6 +3,15 @@ import { PrismaClient } from '@prisma/client';
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { authenticate } from '../middleware/auth';
+import { getJwtSecret, jwtExpiresIn } from '../config';
+
+// Roles a user may pick when self-registering. ADMIN must be granted manually.
+const SELF_REGISTER_ROLES = ['CUSTOMER', 'SELLER'];
+
+function withoutPassword<T extends { password?: string }>(user: T) {
+  const { password: _password, ...safe } = user;
+  return safe;
+}
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -12,8 +21,15 @@ router.post('/register', async (req, res) => {
   try {
     const { email, phone, password, firstName, lastName, role = 'CUSTOMER' } = req.body;
 
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ error: 'email, password, firstName and lastName are required' });
+    }
+    if (!SELF_REGISTER_ROLES.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
     const existingUser = await prisma.user.findFirst({
-      where: { OR: [{ email }, { phone }] },
+      where: { OR: phone ? [{ email }, { phone }] : [{ email }] },
     });
 
     if (existingUser) {
@@ -35,11 +51,11 @@ router.post('/register', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      getJwtSecret(),
+      { expiresIn: jwtExpiresIn }
     );
 
-    res.status(201).json({ user, token });
+    res.status(201).json({ user: withoutPassword(user), token });
   } catch (error) {
     res.status(500).json({ error: 'Registration failed' });
   }
@@ -49,6 +65,9 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'email and password are required' });
+    }
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -62,11 +81,11 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      getJwtSecret(),
+      { expiresIn: jwtExpiresIn }
     );
 
-    res.json({ user, token });
+    res.json({ user: withoutPassword(user), token });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }

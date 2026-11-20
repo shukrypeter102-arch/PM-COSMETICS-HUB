@@ -1,11 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['s3.amazonaws.com', 'pmcosmetics.s3.amazonaws.com', 'via.placeholder.com'],
-  },
-  i18n: {
-    locales: ['ar', 'en'],
-    defaultLocale: 'ar',
+    remotePatterns: [
+      { protocol: 'https', hostname: 's3.amazonaws.com' },
+      { protocol: 'https', hostname: 'pmcosmetics.s3.amazonaws.com' },
+      { protocol: 'https', hostname: 'via.placeholder.com' },
+    ],
   },
 };
 

@@ -11,9 +11,23 @@ Monorepo for the PM Cosmetics retail and wholesale commerce platform. The reposi
 
 ## Current status
 
-This repository is being brought into a runnable, consistently maintained state. The checked-in root `package.json` declares npm workspaces for `apps/*` and `packages/*`, but the web and API directories currently have no `package.json`, and there is no root lockfile. As a result, a complete install/build workflow cannot yet be reliably documented or verified. The mobile directory has its own package manifest.
+All three apps have package manifests and a single root `package-lock.json`. CI (`.github/workflows/ci.yml`) runs on Node 20 and 22. It installs with `npm ci`, validates the Prisma schema, type-checks the mobile app, and builds the web and API apps.
 
-Do not treat the repository as production-ready until application manifests, environment configuration, and automated checks have been validated.
+The API's database schema is in `apps/api/prisma/schema.prisma`. It was derived from the models the route handlers use. Review it before you run the first migration against real data.
+
+Payments are still placeholders. Stripe/PayPal verification must be done server-side before going live. Do not treat the repository as production-ready until that is done.
+
+## Quick start
+
+```sh
+npm ci
+cp .env.example .env        # set JWT_SECRET and DATABASE_URL
+docker compose up -d        # PostgreSQL + Redis
+npm run db:push             # create tables from the Prisma schema
+npm run dev                 # web on :3000, API on :3001
+```
+
+`JWT_SECRET` is required. The API refuses to sign or verify tokens without it.
 
 ## Local services
 
@@ -24,10 +38,6 @@ docker compose up -d
 ```
 
 Copy `.env.example` to `.env` and replace placeholder credentials before using the services. Never commit `.env` or real credentials. The example currently contains local development defaults only.
-
-## Applications
-
-Each application will have its own verified installation and run instructions once its package manifest and scripts are in place. See `apps/mobile/package.json` for the currently declared Expo scripts.
 
 ## Contributing
 

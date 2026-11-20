@@ -6,7 +6,7 @@ import { useSelector } from 'react-redux';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 export default function OrdersScreen() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const token = useSelector((state: any) => state.auth.token);
 
